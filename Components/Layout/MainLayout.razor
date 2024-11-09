@@ -1,0 +1,22 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <NavMenu />
+    
+    <main class="main">
+        <div class="container mt-5 pt-4">
+            @Body
+        </div>
+    </main>
+</div>
+
+<style>
+    .page {
+        min-height: 100vh;
+        background-color: #f8f9fa;
+    }
+
+    .main {
+        padding: 1rem;
+    }
+</style>

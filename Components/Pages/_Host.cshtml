@@ -1,0 +1,21 @@
+@page "/"
+@using MigracionApp.Web.Components
+@namespace MigracionApp.Web.Components.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+
+
+{
+
+    Layout 
+=
+ 
+"_Layout"
+;
+
+}
+
+
+<component type="typeof(App)" render-mode="ServerPrerendered" />
+
+<script src="_framework/blazor.server.js"></script>

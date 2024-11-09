@@ -1,0 +1,252 @@
+@page "/mantenimiento"
+@using Microsoft.EntityFrameworkCore
+@using MigracionApp.Web.Models
+@using MigracionApp.Web.Data
+@inject ApplicationDbContext Context
+@inject IJSRuntime JS
+
+<h3 class="mb-4">Mantenimiento de Personas Detenidas</h3>
+
+<div class="row mb-4">
+    <div class="col">
+        <button class="btn btn-primary" @onclick="() => ShowModal()">
+            <span class="oi oi-plus"></span> Nuevo Registro
+        </button>
+    </div>
+    <div class="col-auto">
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Buscar..." 
+                   @bind="searchText" @bind:event="oninput" />
+            @if (!string.IsNullOrEmpty(searchText))
+            {
+                <button class="btn btn-outline-secondary" @onclick="() => searchText = string.Empty">
+                    <span class="oi oi-x"></span>
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@if (detenidos == null)
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+    </div>
+}
+else if (!detenidos.Any())
+{
+    <div class="alert alert-info" role="alert">
+        No hay registros disponibles.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Fecha Detención</th>
+                    <th>Nombre Completo</th>
+                    <th>Pasaporte</th>
+                    <th>Fecha Nacimiento</th>
+                    <th>Ubicación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var detenido in GetFilteredDetenidos())
+                {
+                    <tr>
+                        <td>@detenido.FechaDetencion.ToShortDateString()</td>
+                        <td>@detenido.NombreCompleto</td>
+                        <td>@detenido.NumeroPasaporte</td>
+                        <td>@detenido.FechaNacimiento.ToShortDateString()</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" @onclick="() => ShowLocation(detenido)">
+                                <span class="oi oi-map-marker"></span> Ver
+                            </button>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-warning" @onclick="() => ShowModal(detenido)">
+                                    <span class="oi oi-pencil"></span>
+                                </button>
+                                <button class="btn btn-sm btn-danger" @onclick="() => DeleteDetenido(detenido)">
+                                    <span class="oi oi-trash"></span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (showModal)
+{
+    <div class="modal fade show" style="display: block" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(currentDetenido.Id == 0 ? "Nuevo Registro" : "Editar Registro")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@currentDetenido" OnValidSubmit="SaveDetenido">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger" />
+
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Detención</label>
+                            <InputDate class="form-control" @bind-Value="currentDetenido.FechaDetencion" />
+                            <ValidationMessage For="@(() => currentDetenido.FechaDetencion)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Nombre Completo</label>
+                            <InputText class="form-control" @bind-Value="currentDetenido.NombreCompleto" />
+                            <ValidationMessage For="@(() => currentDetenido.NombreCompleto)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Número de Pasaporte</label>
+                            <InputText class="form-control" @bind-Value="currentDetenido.NumeroPasaporte" />
+                            <ValidationMessage For="@(() => currentDetenido.NumeroPasaporte)" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Fecha de Nacimiento</label>
+                            <InputDate class="form-control" @bind-Value="currentDetenido.FechaNacimiento" />
+                            <ValidationMessage For="@(() => currentDetenido.FechaNacimiento)" />
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Latitud</label>
+                                <InputNumber class="form-control" @bind-Value="currentDetenido.Latitud" />
+                                <ValidationMessage For="@(() => currentDetenido.Latitud)" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Longitud</label>
+                                <InputNumber class="form-control" @bind-Value="currentDetenido.Longitud" />
+                                <ValidationMessage For="@(() => currentDetenido.Longitud)" />
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (showLocationModal)
+{
+    <div class="modal fade show" style="display: block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ubicación de la Detención</h5>
+                    <button type="button" class="btn-close" @onclick="() => showLocationModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="locationMap" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<Detenido>? detenidos;
+    private bool showModal;
+    private bool showLocationModal;
+    private Detenido currentDetenido = new() { FechaDetencion = DateTime.Today, FechaNacimiento = DateTime.Today };
+    private string searchText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDetenidos();
+    }
+
+    private async Task LoadDetenidos()
+    {
+        detenidos = await Context.Detenidos
+            .OrderByDescending(d => d.FechaDetencion)
+            .ToListAsync();
+    }
+
+    private IEnumerable<Detenido> GetFilteredDetenidos()
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return detenidos ?? Enumerable.Empty<Detenido>();
+
+        return detenidos?.Where(d =>
+            d.NombreCompleto.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+            d.NumeroPasaporte.Contains(searchText, StringComparison.OrdinalIgnoreCase)) 
+            ?? Enumerable.Empty<Detenido>();
+    }
+
+    private void ShowModal(Detenido? detenido = null)
+    {
+        currentDetenido = detenido ?? new Detenido 
+        { 
+            FechaDetencion = DateTime.Today,
+            FechaNacimiento = DateTime.Today
+        };
+        showModal = true;
+    }
+
+    private async Task ShowLocation(Detenido detenido)
+    {
+        showLocationModal = true;
+        StateHasChanged();
+        await Task.Delay(100); // Esperar a que el modal se muestre
+        await JS.InvokeVoidAsync("initializeMap", "locationMap", detenido.Latitud, detenido.Longitud);
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        currentDetenido = new() 
+        { 
+            FechaDetencion = DateTime.Today,
+            FechaNacimiento = DateTime.Today
+        };
+    }
+
+    private async Task SaveDetenido()
+    {
+        if (currentDetenido.Id == 0)
+        {
+            Context.Detenidos.Add(currentDetenido);
+        }
+        else
+        {
+            Context.Detenidos.Update(currentDetenido);
+        }
+
+        await Context.SaveChangesAsync();
+        await LoadDetenidos();
+        CloseModal();
+    }
+
+    private async Task DeleteDetenido(Detenido detenido)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "¿Está seguro de eliminar este registro?"))
+        {
+            Context.Detenidos.Remove(detenido);
+            await Context.SaveChangesAsync();
+            await LoadDetenidos();
+        }
+    }
+}

@@ -1,0 +1,363 @@
+@page "/calendario"
+@using Microsoft.EntityFrameworkCore
+@using MigracionApp.Web.Models
+@using MigracionApp.Web.Data
+@inject ApplicationDbContext Context
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+
+<h3>Calendario de Detenciones</h3>
+
+<div class="calendar-container">
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="calendar">
+                <div class="calendar-header">
+                    <button class="btn btn-outline-primary" @onclick="PreviousMonth">
+                        <span class="oi oi-chevron-left"></span>
+                    </button>
+                    <h4 class="mb-0 text-capitalize">@currentDate.ToString("MMMM yyyy")</h4>
+                    <button class="btn btn-outline-primary" @onclick="NextMonth">
+                        <span class="oi oi-chevron-right"></span>
+                    </button>
+                </div>
+
+                <div class="calendar-weekdays">
+                    <div>Dom</div>
+                    <div>Lun</div>
+                    <div>Mar</div>
+                    <div>Mié</div>
+                    <div>Jue</div>
+                    <div>Vie</div>
+                    <div>Sáb</div>
+                </div>
+
+                <div class="calendar-days">
+                    @foreach (var week in GetCalendarDays())
+                    {
+                        <div class="calendar-week">
+                            @foreach (var day in week)
+                            {
+                                var detenidosDelDia = GetDetenidosForDate(day);
+                                var isCurrentMonth = day.Month == currentDate.Month;
+                                var hasDetenidos = detenidosDelDia.Any();
+                                var isToday = day.Date == DateTime.Today;
+
+                                <div class="@($"calendar-day {(isCurrentMonth ? "" : "other-month")} {(hasDetenidos ? "has-detenidos" : "")} {(isToday ? "today" : "")}")">
+                                    <span class="day-number">@day.Day</span>
+                                    @if (hasDetenidos)
+                                    {
+                                        <div class="detenidos-badge" @onclick="() => ShowDetenidosModal(day)">
+                                            @detenidosDelDia.Count()
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">Total Detenciones</h6>
+                    <h3 class="mb-0">@GetTotalDetenidos()</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">Día más Activo</h6>
+                    <h3 class="mb-0">@GetMostActiveDay()</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">Promedio Diario</h6>
+                    <h3 class="mb-0">@GetAveragePerDay().ToString("F1")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="card-title">Días con Actividad</h6>
+                    <h3 class="mb-0">@GetDaysWithActivity()</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (showModal && selectedDetenidos != null)
+{
+    <div class="modal fade show" style="display: block" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detenciones del @selectedDate.ToShortDateString()</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Pasaporte</th>
+                                    <th>Fecha Nacimiento</th>
+                                    <th>Ubicación</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var detenido in selectedDetenidos)
+                                {
+                                    <tr>
+                                        <td>@detenido.NombreCompleto</td>
+                                        <td>@detenido.NumeroPasaporte</td>
+                                        <td>@detenido.FechaNacimiento.ToShortDateString()</td>
+                                        <td>@detenido.Latitud, @detenido.Longitud</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" @onclick="() => VerEnMapa(detenido)">
+                                                <span class="oi oi-map-marker"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+<style>
+    .calendar-container {
+        margin: 20px 0;
+    }
+
+    .calendar {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+    }
+
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: bold;
+        padding: 10px 0;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .calendar-week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        position: relative;
+        background-color: white;
+        transition: background-color 0.2s;
+    }
+
+    .calendar-day:hover {
+        background-color: #f8f9fa;
+    }
+
+    .other-month {
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+
+    .has-detenidos {
+        background-color: #e7f5ff;
+    }
+
+    .today {
+        background-color: #fff3cd;
+        font-weight: bold;
+    }
+
+    .day-number {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        font-size: 0.9em;
+    }
+
+    .detenidos-badge {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background-color: #0d6efd;
+        color: white;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8em;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .detenidos-badge:hover {
+        transform: scale(1.1);
+        background-color: #0b5ed7;
+    }
+
+    .card {
+        border: none;
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+
+@code {
+    private DateTime currentDate = DateTime.Today;
+    private Dictionary<DateTime, List<Detenido>>? detenidosPorFecha;
+    private bool showModal;
+    private DateTime selectedDate;
+    private List<Detenido>? selectedDetenidos;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDetenidos();
+    }
+
+    private async Task LoadDetenidos()
+    {
+        var startDate = new DateTime(currentDate.Year, currentDate.Month, 1);
+        var endDate = startDate.AddMonths(1).AddDays(-1);
+
+        var detenidos = await Context.Detenidos
+            .Where(d => d.FechaDetencion >= startDate && d.FechaDetencion <= endDate)
+            .ToListAsync();
+
+        detenidosPorFecha = detenidos
+            .GroupBy(d => d.FechaDetencion.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private List<List<DateTime>> GetCalendarDays()
+    {
+        var calendar = new List<List<DateTime>>();
+        var firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+        var startDate = firstDayOfMonth.AddDays(-(int)firstDayOfMonth.DayOfWeek);
+
+        for (int weekIndex = 0; weekIndex < 6; weekIndex++)
+        {
+            var week = new List<DateTime>();
+            for (int dayIndex = 0; dayIndex < 7; dayIndex++)
+            {
+                week.Add(startDate);
+                startDate = startDate.AddDays(1);
+            }
+            calendar.Add(week);
+        }
+
+        return calendar;
+    }
+
+    private List<Detenido> GetDetenidosForDate(DateTime date)
+    {
+        if (detenidosPorFecha != null && detenidosPorFecha.ContainsKey(date.Date))
+        {
+            return detenidosPorFecha[date.Date];
+        }
+        return new List<Detenido>();
+    }
+
+    private async Task PreviousMonth()
+    {
+        currentDate = currentDate.AddMonths(-1);
+        await LoadDetenidos();
+    }
+
+    private async Task NextMonth()
+    {
+        currentDate = currentDate.AddMonths(1);
+        await LoadDetenidos();
+    }
+
+    private void ShowDetenidosModal(DateTime date)
+    {
+        selectedDate = date;
+        selectedDetenidos = GetDetenidosForDate(date);
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        selectedDetenidos = null;
+    }
+
+    private void VerEnMapa(Detenido detenido)
+    {
+        NavigationManager.NavigateTo($"/mapa?lat={detenido.Latitud}&lng={detenido.Longitud}");
+    }
+
+    private int GetTotalDetenidos()
+    {
+        return detenidosPorFecha?.Values.Sum(list => list.Count) ?? 0;
+    }
+
+    private string GetMostActiveDay()
+    {
+        if (detenidosPorFecha == null || !detenidosPorFecha.Any())
+            return "N/A";
+
+        var maxDay = detenidosPorFecha
+            .OrderByDescending(kvp => kvp.Value.Count)
+            .First();
+
+        return $"{maxDay.Key.Day}/{maxDay.Key.Month} ({maxDay.Value.Count})";
+    }
+
+    private double GetAveragePerDay()
+    {
+        if (detenidosPorFecha == null || !detenidosPorFecha.Any())
+            return 0;
+
+        var totalDays = DateTime.DaysInMonth(currentDate.Year, currentDate.Month);
+        var totalDetenidos = GetTotalDetenidos();
+
+        return (double)totalDetenidos / totalDays;
+    }
+
+    private int GetDaysWithActivity()
+    {
+        return detenidosPorFecha?.Count ?? 0;
+    }
+}

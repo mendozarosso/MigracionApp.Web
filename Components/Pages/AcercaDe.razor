@@ -1,0 +1,98 @@
+@page "/acerca"
+
+<div class="container py-5">
+    <div class="card shadow-lg">
+        <div class="row g-0">
+            <div class="col-md-4">
+                <div class="profile-image-container">
+                    <img src="/images/foto-pasaporte.jpg" 
+                         class="img-fluid rounded-start profile-image" 
+                         alt="Foto de perfil"
+                         onError="this.src='/images/profile-placeholder.png'" />
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="card-body">
+                    <h2 class="card-title border-bottom pb-3">Información del Desarrollador</h2>
+                    <div class="info-container">
+                        <div class="info-item">
+                            <span class="info-label">
+                                <i class="oi oi-person text-primary"></i> Nombre:
+                            </span>
+                            <span class="info-value">Jason Mendoza</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">
+                                <i class="oi oi-badge text-primary"></i> Matrícula:
+                            </span>
+                            <span class="info-value">2023-1889</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">
+                                <i class="oi oi-book text-primary"></i> Carrera:
+                            </span>
+                            <span class="info-value">Software</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">
+                                <i class="oi oi-calendar text-primary"></i> Período:
+                            </span>
+                            <span class="info-value">2024-C4</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .profile-image-container {
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .profile-image {
+        width: 250px;
+        height: 300px;
+        object-fit: cover;
+        border: 3px solid #0d6efd;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .info-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .info-label {
+        font-weight: bold;
+        min-width: 120px;
+        color: #6c757d;
+    }
+
+    .info-value {
+        font-size: 1.1rem;
+    }
+
+    .card {
+        border: none;
+        overflow: hidden;
+    }
+
+    @@media (max-width: 768px) {
+        .profile-image {
+            width: 200px;
+            height: 240px;
+        }
+    }
+</style>
